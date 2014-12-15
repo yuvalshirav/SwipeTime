@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">SwipeTimeControlShowcase</string>
+    <string name="app_name">\u00a0Swipe Time!\u00a0</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="title_activity_time_selector">TimeSelectorActivity</string>
+    <string name="cancel">Cancel</string>
+    <string name="onboarding">Swipe to select time</string>
+    <string name="set_alarm">Set alarm</string>
 
 </resources>

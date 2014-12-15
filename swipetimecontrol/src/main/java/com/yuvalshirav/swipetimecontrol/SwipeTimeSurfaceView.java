@@ -1,6 +1,8 @@
 package com.yuvalshirav.swipetimecontrol;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -26,6 +28,13 @@ import android.view.SurfaceView;
  */
 public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, SurfaceHolder.Callback {
 
+    public interface OnTimeChanged {
+
+        void onTimeChanged(Time time, STATUS status, DAY_PART dayPart);
+
+    }
+
+    private OnTimeChanged mOnTimeChanged;
     private SurfaceHolder mSurfaceHolder;
     private Thread mRenderThread = null;
 
@@ -54,18 +63,19 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     private RectF mDaytimeBounds = new RectF();
     private RectF mNighttimeBounds = new RectF();
     private DrawThread mDrawThread;
+    private Time mLastTime = new Time();
 
     private boolean mRunning;
 
     private final static int SEGMENTS = 12;
     private final static int TOP_HOUR = 6;
 
-    private enum STATUS {
-        START, MOVE, DAY, NIGHT, CANCEL
+    public enum STATUS {
+        START, MOVE, DAY, NIGHT, CANCEL, DONE
     }
     private STATUS mStatus = STATUS.START;
 
-    private enum DAY_PART {
+    public enum DAY_PART {
         DAYTIME(6, 17, R.string.daytime), NIGHTIME(18, 5, R.string.nighttime);
 
         private int start;
@@ -90,9 +100,9 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
             return titleRes;
         }
     }
-    private DAY_PART dayPart = DAY_PART.DAYTIME;
+    private DAY_PART mDayPart = DAY_PART.DAYTIME;
 
-    SwipeTimeSurfaceView(Context context, AttributeSet attrs) {
+    public SwipeTimeSurfaceView(Context context, AttributeSet attrs) {
         super(context);
 
         setupAttrs(context, attrs);
@@ -100,25 +110,23 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         mSurfaceHolder = getHolder();
         mSurfaceHolder.addCallback(this);
 
-        // TODO: move (xml?)
-        //setBackgroundColor(Color.BLACK);
-
-        //setZOrderOnTop(true);    // necessary
-        //mSurfaceHolder.setFormat(PixelFormat.OPAQUE);
         setZOrderOnTop(true);
         mSurfaceHolder.setFormat(PixelFormat.TRANSPARENT);
         setBackgroundColor(mAttrBackgroundColor);
 
         setupPaints();
 
+        mOnTimeChanged = (OnTimeChanged)context;
+
     }
 
     private void setupAttrs(Context context, AttributeSet attrs) {
-        TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.SwipeTimeView, 0, 0);
+        TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.SwipeTimeSurfaceView, 0, 0);
         try {
-            mAttrBottomToolbarHeight = mAttrActionBarHeight = ta.getDimension(R.styleable.SwipeTimeView_action_bar_height, getResources().getDimension(R.dimen.action_bar_height));
-            mAttrTimeColor = ta.getColor(R.styleable.SwipeTimeView_time_color, getResources().getColor(R.color.time));
-            mAttrBackgroundColor = ta.getColor(R.styleable.SwipeTimeView_background_color, getResources().getColor(R.color.background));
+            mAttrActionBarHeight = 0;
+            mAttrBottomToolbarHeight =  ta.getDimension(R.styleable.SwipeTimeSurfaceView_action_bar_height, getResources().getDimension(R.dimen.action_bar_height));
+            mAttrTimeColor = ta.getColor(R.styleable.SwipeTimeSurfaceView_time_color, getResources().getColor(R.color.time));
+            mAttrBackgroundColor = ta.getColor(R.styleable.SwipeTimeSurfaceView_background_color, getResources().getColor(R.color.background));
         } finally {
             ta.recycle();
         }
@@ -225,10 +233,10 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
 
         if (mDaytimeBounds.contains(mX, mY)) {
             mStatus = STATUS.DAY;
-            dayPart = DAY_PART.DAYTIME;
+            mDayPart = DAY_PART.DAYTIME;
         } else if (mNighttimeBounds.contains(mX, mY)) {
             mStatus = STATUS.NIGHT;
-            dayPart = DAY_PART.NIGHTIME;
+            mDayPart = DAY_PART.NIGHTIME;
         } else if (mY <= mCancelBounds.bottom) {
             mStatus = STATUS.CANCEL;
         } else {
@@ -251,72 +259,17 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
                 break;
             case MotionEvent.ACTION_UP:
                 handle = true;
+                if (mStatus == STATUS.MOVE || mStatus == STATUS.CANCEL) {
+                    mStatus = STATUS.DONE;
+                    if (mOnTimeChanged != null) {
+                        mOnTimeChanged.onTimeChanged(getTime(), mStatus, mDayPart);
+                    }
+                }
                 break;
         }
         return handle;
     }
 
-    // TODO: !!!!!! is the thread automaticaly handled?
-    protected void refresh() {
-        if(mRunning && mSurfaceHolder.getSurface().isValid()){
-            Canvas canvas = mSurfaceHolder.lockCanvas();
-
-
-            /*
-            canvas.drawColor( 0, PorterDuff.Mode.CLEAR );
-            int xPos = (canvas.getWidth() / 2);
-            int yPos = (int) ((canvas.getHeight() / 2) - ((mTextPaint.descent() + mTextPaint.ascent()) / 2)) ;
-            canvas.drawText("(" + mX + ", " + mY + ")", xPos, yPos, mTextPaint);
-            */
-
-            canvas.drawColor(Color.WHITE, PorterDuff.Mode.CLEAR);
-            //canvas.drawLine(mStartX, mStartY, mX, mY, mLinePaint);
-
-            // TODO: remove!
-            Paint paint = new Paint();
-            paint.setAntiAlias(true);
-            paint.setFilterBitmap(true);
-            paint.setDither(true);
-
-            //canvas.drawBitmap(mCursorBitmap, mX + mCursorBitmap.getScaledWidth(canvas) / 2, mY - mCursorBitmap.getScaledHeight(canvas) / 2, mFramePaint);
-
-            //refreshTargets(canvas);
-            mSurfaceHolder.unlockCanvasAndPost(canvas);
-        }
-    }
-
-    protected void refreshTargets(Canvas canvas) {
-        double totalRad = Math.PI * 0.35;
-        double startRad = Math.PI * 0.1;
-        int nPoints = 5;
-        double pointRad = totalRad / nPoints;
-        float r = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 350, getResources().getDisplayMetrics());
-        float a = 0;
-        float b = 0;
-
-        // x = a + r cos t
-        // y = b + r sin t
-        for (int i=0; i<nPoints; i++) {
-            float x = (float)(a + r * Math.cos(startRad + pointRad * i));
-            float y = (float)(b + r * Math.sin(startRad + pointRad * i));
-            String label = "point " + i;
-            canvas.drawText(label, x, y, mTextPaint);
-
-            Rect textBounds = new Rect();
-            mTextPaint.getTextBounds(label, 0, label.length(), textBounds);
-            float labelHeight = mTextPaint.ascent() + mTextPaint.descent();
-            float labelWidth = mTextPaint.measureText(label);
-            //canvas.drawRect(x - labelWidth, y, x, y + labelHeight, mFramePaint);
-            //canvas.drawRect(textBounds.left + x - labelWidth, textBounds.top + y, textBounds.right + x - labelWidth, textBounds.bottom + y, mFramePaint);
-            textBounds.offset((int)(x - labelWidth), (int)y);
-            canvas.drawRect(textBounds.left, textBounds.top, textBounds.right, textBounds.bottom, mFramePaint);
-        }
-
-    }
-
-    protected void refreshTargetsArc(Canvas canvas) {
-
-    }
 
     private int getSegment() {
         int segment = (int)Math.floor((mY - mAttrActionBarHeight) / ((mCanvasHeight - mAttrActionBarHeight - mAttrBottomToolbarHeight) / SEGMENTS));
@@ -334,7 +287,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
 
     private Time getTime(int segment, float x) {
 
-        int hour = segment + dayPart.getStart() <= 23 ? segment + dayPart.getStart() : segment + dayPart.getStart() - 24;
+        int hour = segment + mDayPart.getStart() <= 23 ? segment + mDayPart.getStart() : segment + mDayPart.getStart() - 24;
         int xRange = mCanvasWidth - 2 * mCursorRadius;
         int minutes = 5 * Math.round(11 * (x - mCursorRadius) / xRange);
 
@@ -346,11 +299,11 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     }
 
     public void onResume() {
-        // TODO: ----
+        // draw thread handled in SurfaceHolder callbacks
     }
 
     public void onPause() {
-        // TODO: ----
+        // draw thread handled in SurfaceHolder callbacks
     }
 
     @Override
@@ -382,6 +335,10 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
                 }
             }
         }
+    }
+
+    public void setOnTimeChanged(OnTimeChanged onTimeChanged) {
+        this.mOnTimeChanged = onTimeChanged;
     }
 
     class DrawThread extends Thread {
@@ -485,22 +442,32 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
             drawBackground(canvas);
             drawToggles(canvas);
             if (mStatus == STATUS.START) {
-                drawOnboarding(canvas);
+                //drawOnboarding(canvas);
             } else {
                 if (mStatus == STATUS.CANCEL) {
-                    drawCancel(canvas);
+                    //drawCancel(canvas);
                 } else {
-                    drawTime(canvas);
+                    //drawTime(canvas);
                     if (mStatus == STATUS.MOVE) {
                         canvas.drawCircle(mX, mY, mCursorRadius, mTextPaint);
                     }
                 }
             }
+
+            // delegate time draw
+            Time time = getTime();
+            if (time == null || mLastTime == null || Time.compare(time, mLastTime) != 0) {
+                if (mOnTimeChanged != null) {
+                    mOnTimeChanged.onTimeChanged(time, mStatus, mDayPart);
+                }
+                mLastTime = time;
+            }
+
         }
 
         private void drawTime(Canvas canvas) {
             Time time = getTime();
-            String timeString = time != null ? time.format("%H:%M") : getResources().getString(dayPart.getTitleRes());
+            String timeString = time != null ? time.format("%H:%M") : getResources().getString(mDayPart.getTitleRes());
             Rect textBounds = new Rect();
             mTextPaint.getTextBounds(timeString, 0, timeString.length(), textBounds);
             canvas.drawText(timeString, mCanvasWidth / 2, (mAttrActionBarHeight + textBounds.height()) / 2, mTextPaint);
@@ -510,7 +477,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
 
             int segmentHeight = Math.round((mCanvasHeight - mAttrActionBarHeight - mAttrBottomToolbarHeight) / SEGMENTS);
             int xRange = mCanvasWidth - 2 * mCursorRadius;
-            int minuteRange = xRange / 12;
+            int minuteRange = xRange / 11;
 
             // TODO: move paint
             for (int i=0; i<SEGMENTS; i++) {
@@ -518,7 +485,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
 
 
                 // draw time tags
-                for (int j=0; j<=12; j++) {
+                for (int j=0; j<=11; j++) {
                     int x = Math.round(minuteRange * (j + 0.5f));
                     Rect textBounds = null;
                     if (textBounds == null) {
@@ -539,12 +506,12 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
             }
 
             canvas.drawPath(mDaytimePath, mFramePaint);
-            if (dayPart == DAY_PART.DAYTIME) {
+            if (mDayPart == DAY_PART.DAYTIME) {
                 canvas.drawRect(mDaytimeBounds, mToggleActivePaint);
             }
 
             canvas.drawPath(mNighttimePath, mFramePaint);
-            if (dayPart == DAY_PART.NIGHTIME) {
+            if (mDayPart == DAY_PART.NIGHTIME) {
                 canvas.drawRect(mNighttimeBounds, mToggleActivePaint);
             }
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <declare-styleable name="SwipeTimeView">
+    <declare-styleable name="SwipeTimeSurfaceView">
         <attr name="action_bar_height" format="dimension" />
         <attr name="time_color" format="color" />
         <attr name="background_color" format="color" />

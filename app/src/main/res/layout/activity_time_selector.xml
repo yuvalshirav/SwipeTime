@@ -1,0 +1,62 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.yuvalshirav.swipetimecontrolshowcase.TimeSelectorActivity">
+
+    <android.support.v7.widget.Toolbar
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?android:attr/actionBarSize"
+        android:background="@color/time_tag"
+        app:theme="@style/ThemeOverlay.AppCompat.Light"
+        app:contentInsetStart="0dp"
+        android:gravity="center"
+
+        >
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            >
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:text="@string/onboarding"
+            android:textColor="@color/time"
+            android:gravity="center"
+            android:layout_gravity="center"
+            />
+        <TextView
+            android:id="@+id/cancel"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:text="@string/cancel"
+            android:textColor="#ffffff"
+            android:background="#ff0000"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:visibility="gone"
+            />
+        </FrameLayout>
+
+    </android.support.v7.widget.Toolbar>
+
+    <com.yuvalshirav.swipetimecontrol.SwipeTimeSurfaceView
+        xmlns:swipe="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/time_selector"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        swipe:time_color="@color/time"
+        swipe:background_color="#ffffff"
+        swipe:action_bar_height="@dimen/action_bar_height"
+        />
+
+</LinearLayout>
