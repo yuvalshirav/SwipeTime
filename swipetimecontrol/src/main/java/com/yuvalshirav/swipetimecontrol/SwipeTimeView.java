@@ -13,6 +13,7 @@ import android.graphics.drawable.Drawable;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -92,7 +93,7 @@ public class SwipeTimeView extends FrameLayout {
         WindowManager.LayoutParams lp = dialog.getWindow().getAttributes();
         lp.width = WindowManager.LayoutParams.MATCH_PARENT;
         lp.height= WindowManager.LayoutParams.MATCH_PARENT;
-        //lp.gravity=Gravity.BOTTOM | Gravity.LEFT;
+        lp.gravity = Gravity.BOTTOM | Gravity.LEFT;
         lp.dimAmount = 0;
         dialog.getWindow().setAttributes(lp);
         return dialog;

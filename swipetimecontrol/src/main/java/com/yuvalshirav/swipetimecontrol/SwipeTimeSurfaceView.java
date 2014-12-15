@@ -323,9 +323,9 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         return mY > mAttrActionBarHeight && segment < SEGMENTS ? segment : -1;
     }
 
-    private Time getTime() {
+    public Time getTime() {
         // inside toolbar
-        if (mStatus == STATUS.NIGHT || mStatus == STATUS.DAY) {
+        if (mStatus == STATUS.NIGHT || mStatus == STATUS.DAY || mStatus == STATUS.CANCEL) {
             return null;
         }
 
@@ -531,8 +531,6 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
                     canvas.drawText(tag, x - 5, i*segmentHeight + mAttrActionBarHeight + (segmentHeight + textBounds.height()) / 2, j == 0 ? mTagMainPaint : mTagPaint);
                 }
             }
-
-
         }
 
         private void drawToggles(Canvas canvas) {
