@@ -147,7 +147,7 @@ public class SwipeTimeView extends FrameLayout {
     private boolean onMove(MotionEvent event) {
         mState = STATE.MOVE;
         if (mSwipeTimeSurfaceView != null) {
-            mSwipeTimeSurfaceView.setPoint(event.getX(), event.getY());
+            //mSwipeTimeSurfaceView.setPoint(event.getX(), event.getY());
         }
         return true;
     }

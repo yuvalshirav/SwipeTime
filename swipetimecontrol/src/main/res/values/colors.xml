@@ -2,4 +2,5 @@
 <resources>
     <color name="time">#017dba</color>
     <color name="background">#ffffff</color>
+    <color name="toggle_active_bg">#e0eaf1</color>
 </resources>

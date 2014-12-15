@@ -7,11 +7,13 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.PixelFormat;
+import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.graphics.drawable.ColorDrawable;
 import android.os.Handler;
 import android.text.format.Time;
 import android.util.AttributeSet;
@@ -28,27 +30,63 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     private SurfaceHolder mSurfaceHolder;
     private Thread mRenderThread = null;
 
-    private float mStartX;
-    private float mStartY;
     private float mX;
     private float mY;
     private float mLastX = Float.MIN_VALUE;
     private float mLastY = Float.MIN_VALUE;
     private Paint mTextPaint;
+    private Paint mOnboardingPaint;
     private Paint mLinePaint;
     private Paint mFramePaint;
+    private Paint mToggleTextPaint;
+    private Paint mToggleActivePaint;
     private int mCanvasHeight;
     private int mCanvasWidth;
     private float mAttrActionBarHeight;
+    private float mAttrBottomToolbarHeight;
     private int mAttrTimeColor;
     private int mAttrBackgroundColor;
     private int mCursorRadius;
+    private RectF mDaytimeBounds = new RectF();
+    private RectF mNighttimeBounds = new RectF();
     private DrawThread mDrawThread;
 
     private boolean mRunning;
 
-    private final static int SEGMENTS = 24;
+    private final static int SEGMENTS = 12;
     private final static int TOP_HOUR = 6;
+
+    private enum STATUS {
+        START, MOVE, DAY, NIGHT
+    }
+    private STATUS mStatus = STATUS.START;
+
+    private enum DAY_PART {
+        DAYTIME(6, 17, R.string.daytime), NIGHTIME(18, 5, R.string.nighttime);
+
+        private int start;
+        private int end;
+        private int titleRes;
+
+        DAY_PART(int start, int end, int titleRes) {
+            this.start = start;
+            this.end = end;
+            this.titleRes = titleRes;
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public int getEnd() {
+            return end;
+        }
+
+        public int getTitleRes() {
+            return titleRes;
+        }
+    }
+    private DAY_PART dayPart = DAY_PART.DAYTIME;
 
     SwipeTimeSurfaceView(Context context, AttributeSet attrs) {
         super(context);
@@ -69,13 +107,12 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
 
         setupPaints();
 
-
     }
 
     private void setupAttrs(Context context, AttributeSet attrs) {
         TypedArray ta = context.obtainStyledAttributes(attrs, R.styleable.SwipeTimeView, 0, 0);
         try {
-            mAttrActionBarHeight = ta.getDimension(R.styleable.SwipeTimeView_action_bar_height, getResources().getDimension(R.dimen.action_bar_height));
+            mAttrBottomToolbarHeight = mAttrActionBarHeight = ta.getDimension(R.styleable.SwipeTimeView_action_bar_height, getResources().getDimension(R.dimen.action_bar_height));
             mAttrTimeColor = ta.getColor(R.styleable.SwipeTimeView_time_color, getResources().getColor(R.color.time));
             mAttrBackgroundColor = ta.getColor(R.styleable.SwipeTimeView_background_color, getResources().getColor(R.color.background));
         } finally {
@@ -92,13 +129,28 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         mTextPaint.setTypeface(Typeface.DEFAULT_BOLD);
         mTextPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 24, getResources().getDisplayMetrics()));
 
+        mOnboardingPaint = new Paint();
+        mOnboardingPaint.setColor(mAttrTimeColor);
+        mOnboardingPaint.setTextAlign(Paint.Align.CENTER);
+        mOnboardingPaint.setTypeface(Typeface.DEFAULT_BOLD);
+        mOnboardingPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 16, getResources().getDisplayMetrics()));
+
         mLinePaint = new Paint();
         mLinePaint.setStrokeWidth(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2, getResources().getDisplayMetrics()));
-        mLinePaint.setColor(Color.RED); // TODO: -----
 
         mFramePaint = new Paint();
+        mFramePaint.setStyle(Paint.Style.STROKE);
         mFramePaint.setStrokeWidth(1);
-        mFramePaint.setColor(Color.RED); // TODO: -----
+        mFramePaint.setColor(Color.BLACK); // TODO: use attr
+
+        mToggleTextPaint = new Paint();
+        mToggleTextPaint.setColor(Color.BLACK); // TODO: use attr
+        mToggleTextPaint.setTextAlign(Paint.Align.LEFT);
+        mToggleTextPaint.setTypeface(Typeface.DEFAULT_BOLD);
+        mToggleTextPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 12, getResources().getDisplayMetrics()));
+
+        mToggleActivePaint = new Paint();
+        mToggleActivePaint.setColor(getResources().getColor(R.color.toggle_active_bg)); // TODO: use attr
 
     }
 
@@ -144,13 +196,18 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         mX = Math.max(mCursorRadius, mX);
         mY = Math.max(mAttrActionBarHeight + mCursorRadius, mY);
         mY = Math.min(mCanvasHeight - mCursorRadius, mY);
-    }
 
-    public void setStartPoint(float x, float y) {
-        mStartX = x;
-        mStartY = y;
-    }
+        if (mDaytimeBounds.contains(mX, mY)) {
+            mStatus = STATUS.DAY;
+            dayPart = DAY_PART.DAYTIME;
+        } else if (mNighttimeBounds.contains(mX, mY)) {
+            mStatus = STATUS.NIGHT;
+            dayPart = DAY_PART.NIGHTIME;
+        } else {
+            mStatus = STATUS.MOVE;
+        }
 
+    }
 
     // TODO: use drag event?
     @Override
@@ -176,9 +233,6 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         if(mRunning && mSurfaceHolder.getSurface().isValid()){
             Canvas canvas = mSurfaceHolder.lockCanvas();
 
-            if (mStartX == 0) {
-                setStartPoint(getWidth() / 2 - mCursorRadius, getHeight() / 2 - mCursorRadius);
-            }
 
             /*
             canvas.drawColor( 0, PorterDuff.Mode.CLEAR );
@@ -237,16 +291,22 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     }
 
     private int getSegment() {
-        return (int)Math.floor((mY - mAttrActionBarHeight) / ((mCanvasHeight - mAttrActionBarHeight) / SEGMENTS));
+        int segment = (int)Math.floor((mY - mAttrActionBarHeight) / ((mCanvasHeight - mAttrActionBarHeight) / SEGMENTS));
+        return segment < SEGMENTS ? segment : -1;
     }
 
     private Time getTime() {
         int segment = getSegment();
-        int hour = segment + TOP_HOUR <= 23 ? segment + TOP_HOUR : segment + TOP_HOUR - 24;
 
+        // inside toolbar
+        if (mStatus == STATUS.NIGHT || mStatus == STATUS.DAY) {
+            return null;
+        }
+
+        int hour = segment + dayPart.getStart() <= 23 ? segment + dayPart.getStart() : segment + dayPart.getStart() - 24;
         int xRange = mCanvasWidth - 2 * mCursorRadius;
-        int minutes = 5 * Math.round(11 * mX / xRange);
-        
+        int minutes = 5 * Math.round(11 * (mX - mCursorRadius) / xRange);
+
         Time time = new Time();
         time.setToNow();
         time.set(0, minutes, hour, time.monthDay, time.month, time.year);
@@ -303,7 +363,10 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         private Context mContext;
         private Handler mHandler;
         private Paint mSegmentPaint;
-
+        private Bitmap mDaytimeBitmap;
+        private Bitmap mNighttimeBitmap;
+        private Path mDaytimePath;
+        private Path mNighttimePath;
 
         public DrawThread(SurfaceHolder surfaceHolder, Context context,
                             Handler handler) {
@@ -314,12 +377,41 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
             mSegmentPaint = new Paint();
             mSegmentPaint.setColor(Color.BLACK);
         }
+
+        // TODO: need this?
         public void doStart() {
             synchronized (mSurfaceHolder) {
                 // TODO: start draw?
 
             }
         }
+
+        private void setupToggles() {
+            // TODO: maybe place in yet another thread
+
+            int scaledHeight = Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 32, getResources().getDisplayMetrics()));
+            int scaledWidth;
+
+            mDaytimeBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.daytime);
+            scaledWidth = Math.round(((float)scaledHeight / (float)mDaytimeBitmap.getHeight()) * mDaytimeBitmap.getWidth());
+            mDaytimeBitmap = Bitmap.createScaledBitmap(mDaytimeBitmap, scaledWidth, scaledHeight, true);
+
+            mNighttimeBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.nighttime);
+            scaledWidth = Math.round(((float)scaledHeight / (float)mNighttimeBitmap.getHeight()) * mNighttimeBitmap.getWidth());
+            mNighttimeBitmap = Bitmap.createScaledBitmap(mNighttimeBitmap, scaledWidth, scaledHeight, true);
+
+            mDaytimePath = new Path();
+            mDaytimePath.addRect(0, mCanvasHeight - mAttrBottomToolbarHeight, mCanvasWidth / 2, mCanvasHeight, Path.Direction.CW);
+            mDaytimePath.computeBounds(mDaytimeBounds, true);
+            mDaytimeBounds.inset(1, 1);
+            mNighttimePath = new Path();
+            mNighttimePath.addRect(mCanvasWidth / 2, mCanvasHeight - mAttrBottomToolbarHeight, mCanvasWidth, mCanvasHeight, Path.Direction.CW);
+            mNighttimePath.computeBounds(mNighttimeBounds, true);
+            mNighttimeBounds.inset(1, 1);
+
+        }
+
+
         public void run() {
             while (mRunning) {
                 Canvas canvas = null;
@@ -331,6 +423,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
                         if (mCanvasWidth == 0) {
                             mCanvasWidth = canvas.getWidth();
                             mCanvasHeight = canvas.getHeight();
+
                         }
 
                         synchronized (mSurfaceHolder) {
@@ -359,13 +452,20 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
             //canvas.restore(); // TODO: save and restore?
             canvas.drawColor(Color.WHITE, PorterDuff.Mode.CLEAR);
             drawBackground(canvas);
-            drawTime(canvas);
-            canvas.drawCircle(mX, mY, mCursorRadius, mTextPaint);
+            drawToggles(canvas);
+            if (mY == 0) {
+                drawOnboarding(canvas);
+            } else {
+                drawTime(canvas);
+                if (mStatus == STATUS.MOVE) {
+                    canvas.drawCircle(mX, mY, mCursorRadius, mTextPaint);
+                }
+            }
         }
 
         private void drawTime(Canvas canvas) {
             Time time = getTime();
-            String timeString = time.format("%H:%M");
+            String timeString = time != null ? time.format("%H:%M") : getResources().getString(dayPart.getTitleRes());
             Rect textBounds = new Rect();
             mTextPaint.getTextBounds(timeString, 0, timeString.length(), textBounds);
             canvas.drawText(timeString, mCanvasWidth / 2, mAttrActionBarHeight / 2, mTextPaint);
@@ -373,14 +473,53 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
 
         private void drawBackground(Canvas canvas) {
 
-            int segmentHeight = Math.round((mCanvasHeight - mAttrActionBarHeight) / SEGMENTS);
+            int segmentHeight = Math.round((mCanvasHeight - mAttrActionBarHeight - mAttrBottomToolbarHeight) / SEGMENTS);
 
             // TODO: move paint
             for (int i=0; i<SEGMENTS; i++) {
                 canvas.drawLine(0, i*segmentHeight + mAttrActionBarHeight, mCanvasWidth, i*segmentHeight + mAttrActionBarHeight, mSegmentPaint);
             }
 
+
         }
+
+        private void drawToggles(Canvas canvas) {
+            if (mDaytimePath == null) {
+                setupToggles(); // TODO: not here, maybe delegate to a thread
+            }
+
+            canvas.drawPath(mDaytimePath, mFramePaint);
+            if (dayPart == DAY_PART.DAYTIME) {
+                canvas.drawRect(mDaytimeBounds, mToggleActivePaint);
+            }
+
+            canvas.drawPath(mNighttimePath, mFramePaint);
+            if (dayPart == DAY_PART.NIGHTIME) {
+                canvas.drawRect(mNighttimeBounds, mToggleActivePaint);
+            }
+
+
+            Rect daytimeTextBounds = new Rect(); // TODO: delegate upwards
+            String daytimeTitle = getResources().getString(R.string.daytime);
+            mToggleTextPaint.getTextBounds(daytimeTitle, 0, daytimeTitle.length(), daytimeTextBounds);
+            float daytimeBitmapLeft = (mDaytimeBounds.width() - mDaytimeBitmap.getWidth() - daytimeTextBounds.width() * 1.3f) / 2;
+            canvas.drawBitmap(mDaytimeBitmap, daytimeBitmapLeft, mCanvasHeight - (mDaytimeBounds.height() + mDaytimeBitmap.getHeight()) / 2, null);
+            canvas.drawText(daytimeTitle, daytimeBitmapLeft + mDaytimeBitmap.getWidth(), mCanvasHeight - (mAttrBottomToolbarHeight - daytimeTextBounds.height()) / 2, mToggleTextPaint);
+
+            Rect nighttimeTextBounds = new Rect(); // TODO: delegate upwards
+            String nighttimeTitle = getResources().getString(R.string.nighttime);
+            mToggleTextPaint.getTextBounds(daytimeTitle, 0, nighttimeTitle.length(), nighttimeTextBounds);
+            float nighttimeBitmapLeft = (mCanvasWidth + mNighttimeBounds.width() - mNighttimeBitmap.getWidth() - nighttimeTextBounds.width() * 1.3f) / 2;
+            canvas.drawBitmap(mNighttimeBitmap, nighttimeBitmapLeft, mCanvasHeight - (mNighttimeBounds.height() + mNighttimeBitmap.getHeight()) / 2, null);
+            canvas.drawText(nighttimeTitle, nighttimeBitmapLeft + mNighttimeBitmap.getWidth(), mCanvasHeight - (mAttrBottomToolbarHeight - nighttimeTextBounds.height()) / 2, mToggleTextPaint);
+
+
+        }
+
+        private void drawOnboarding(Canvas canvas) {
+            canvas.drawText(getResources().getString(R.string.onboarding), mCanvasWidth / 2, mAttrActionBarHeight / 2, mOnboardingPaint);
+        }
+
     }
 
 }
