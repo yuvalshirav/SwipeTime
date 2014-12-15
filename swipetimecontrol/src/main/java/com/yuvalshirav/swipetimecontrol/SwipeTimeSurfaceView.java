@@ -37,6 +37,8 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     private Paint mOnboardingPaint;
     private Paint mLinePaint;
     private Paint mFramePaint;
+    private Paint mTagPaint;
+    private Paint mTagMainPaint;
     private Paint mToggleTextPaint;
     private Paint mToggleActivePaint;
     private Paint mCancelPaintText;
@@ -130,6 +132,19 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         mTextPaint.setTextAlign(Paint.Align.CENTER);
         mTextPaint.setTypeface(Typeface.DEFAULT_BOLD);
         mTextPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 24, getResources().getDisplayMetrics()));
+
+        mTagPaint = new Paint();
+        mTagPaint.setColor(getResources().getColor(R.color.time_tag)); // TODO: use attr
+        mTagPaint.setTextAlign(Paint.Align.CENTER);
+        mTagPaint.setTypeface(Typeface.DEFAULT_BOLD);
+        mTagPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 14, getResources().getDisplayMetrics()));
+
+        mTagMainPaint = new Paint();
+        mTagMainPaint.setColor(getResources().getColor(R.color.time)); // TODO: use attr
+        mTagMainPaint.setTextAlign(Paint.Align.CENTER);
+        mTagMainPaint.setTypeface(Typeface.DEFAULT_BOLD);
+        mTagMainPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 14, getResources().getDisplayMetrics()));
+
 
         mCancelPaint = new Paint();
         mCancelPaint.setColor(Color.RED); // TODO: use attr
@@ -309,16 +324,19 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     }
 
     private Time getTime() {
-        int segment = getSegment();
-
         // inside toolbar
         if (mStatus == STATUS.NIGHT || mStatus == STATUS.DAY) {
             return null;
         }
 
+        return getTime(getSegment(), mX);
+    }
+
+    private Time getTime(int segment, float x) {
+
         int hour = segment + dayPart.getStart() <= 23 ? segment + dayPart.getStart() : segment + dayPart.getStart() - 24;
         int xRange = mCanvasWidth - 2 * mCursorRadius;
-        int minutes = 5 * Math.round(11 * (mX - mCursorRadius) / xRange);
+        int minutes = 5 * Math.round(11 * (x - mCursorRadius) / xRange);
 
         Time time = new Time();
         time.setToNow();
@@ -328,11 +346,11 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     }
 
     public void onResume() {
-
+        // TODO: ----
     }
 
     public void onPause() {
-
+        // TODO: ----
     }
 
     @Override
@@ -491,10 +509,27 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         private void drawBackground(Canvas canvas) {
 
             int segmentHeight = Math.round((mCanvasHeight - mAttrActionBarHeight - mAttrBottomToolbarHeight) / SEGMENTS);
+            int xRange = mCanvasWidth - 2 * mCursorRadius;
+            int minuteRange = xRange / 12;
 
             // TODO: move paint
             for (int i=0; i<SEGMENTS; i++) {
                 canvas.drawLine(0, i*segmentHeight + mAttrActionBarHeight, mCanvasWidth, i*segmentHeight + mAttrActionBarHeight, mSegmentPaint);
+
+
+                // draw time tags
+                for (int j=0; j<=12; j++) {
+                    int x = Math.round(minuteRange * (j + 0.5f));
+                    Rect textBounds = null;
+                    if (textBounds == null) {
+                        textBounds = new Rect();
+                        mTagPaint.getTextBounds("00", 0, 2, textBounds);
+                    }
+
+                    Time time = getTime(i, x);
+                    String tag = (j == 0) ? time.format("%H") : time.format(":%M");
+                    canvas.drawText(tag, x - 5, i*segmentHeight + mAttrActionBarHeight + (segmentHeight + textBounds.height()) / 2, j == 0 ? mTagMainPaint : mTagPaint);
+                }
             }
 
 
