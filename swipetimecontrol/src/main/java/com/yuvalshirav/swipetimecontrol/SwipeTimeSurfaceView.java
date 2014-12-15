@@ -133,7 +133,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         mOnboardingPaint.setColor(mAttrTimeColor);
         mOnboardingPaint.setTextAlign(Paint.Align.CENTER);
         mOnboardingPaint.setTypeface(Typeface.DEFAULT_BOLD);
-        mOnboardingPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 16, getResources().getDisplayMetrics()));
+        mOnboardingPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 18, getResources().getDisplayMetrics()));
 
         mLinePaint = new Paint();
         mLinePaint.setStrokeWidth(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2, getResources().getDisplayMetrics()));
@@ -468,7 +468,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
             String timeString = time != null ? time.format("%H:%M") : getResources().getString(dayPart.getTitleRes());
             Rect textBounds = new Rect();
             mTextPaint.getTextBounds(timeString, 0, timeString.length(), textBounds);
-            canvas.drawText(timeString, mCanvasWidth / 2, mAttrActionBarHeight / 2, mTextPaint);
+            canvas.drawText(timeString, mCanvasWidth / 2, (mAttrActionBarHeight + textBounds.height()) / 2, mTextPaint);
         }
 
         private void drawBackground(Canvas canvas) {
@@ -517,7 +517,10 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         }
 
         private void drawOnboarding(Canvas canvas) {
-            canvas.drawText(getResources().getString(R.string.onboarding), mCanvasWidth / 2, mAttrActionBarHeight / 2, mOnboardingPaint);
+            String onboardingText = getResources().getString(R.string.onboarding);
+            Rect onboardingBounds = new Rect();
+            mOnboardingPaint.getTextBounds(onboardingText, 0, onboardingText.length(), onboardingBounds);
+            canvas.drawText(onboardingText, mCanvasWidth / 2, (mAttrActionBarHeight + onboardingBounds.height()) / 2, mOnboardingPaint);
         }
 
     }
