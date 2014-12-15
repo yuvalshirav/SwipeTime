@@ -9,7 +9,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
-import android.graphics.Point;
 import android.graphics.PorterDuff;
 import android.graphics.Rect;
 import android.graphics.RectF;
@@ -40,6 +39,8 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     private Paint mFramePaint;
     private Paint mToggleTextPaint;
     private Paint mToggleActivePaint;
+    private Paint mCancelPaintText;
+    private Paint mCancelPaint;
     private int mCanvasHeight;
     private int mCanvasWidth;
     private float mAttrActionBarHeight;
@@ -47,6 +48,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     private int mAttrTimeColor;
     private int mAttrBackgroundColor;
     private int mCursorRadius;
+    private RectF mCancelBounds = new RectF();
     private RectF mDaytimeBounds = new RectF();
     private RectF mNighttimeBounds = new RectF();
     private DrawThread mDrawThread;
@@ -57,7 +59,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     private final static int TOP_HOUR = 6;
 
     private enum STATUS {
-        START, MOVE, DAY, NIGHT
+        START, MOVE, DAY, NIGHT, CANCEL
     }
     private STATUS mStatus = STATUS.START;
 
@@ -129,6 +131,15 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         mTextPaint.setTypeface(Typeface.DEFAULT_BOLD);
         mTextPaint.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 24, getResources().getDisplayMetrics()));
 
+        mCancelPaint = new Paint();
+        mCancelPaint.setColor(Color.RED); // TODO: use attr
+
+        mCancelPaintText = new Paint();
+        mCancelPaintText.setColor(Color.WHITE); // TODO: use attr
+        mCancelPaintText.setTextAlign(Paint.Align.CENTER);
+        mCancelPaintText.setTypeface(Typeface.DEFAULT_BOLD);
+        mCancelPaintText.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 24, getResources().getDisplayMetrics()));
+
         mOnboardingPaint = new Paint();
         mOnboardingPaint.setColor(mAttrTimeColor);
         mOnboardingPaint.setTextAlign(Paint.Align.CENTER);
@@ -194,7 +205,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         // boundaries
         mX = Math.min(mCanvasWidth - mCursorRadius, mX);
         mX = Math.max(mCursorRadius, mX);
-        mY = Math.max(mAttrActionBarHeight + mCursorRadius, mY);
+        //mY = Math.max(mAttrActionBarHeight + mCursorRadius, mY);
         mY = Math.min(mCanvasHeight - mCursorRadius, mY);
 
         if (mDaytimeBounds.contains(mX, mY)) {
@@ -203,6 +214,8 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
         } else if (mNighttimeBounds.contains(mX, mY)) {
             mStatus = STATUS.NIGHT;
             dayPart = DAY_PART.NIGHTIME;
+        } else if (mY <= mCancelBounds.bottom) {
+            mStatus = STATUS.CANCEL;
         } else {
             mStatus = STATUS.MOVE;
         }
@@ -291,8 +304,8 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
     }
 
     private int getSegment() {
-        int segment = (int)Math.floor((mY - mAttrActionBarHeight) / ((mCanvasHeight - mAttrActionBarHeight) / SEGMENTS));
-        return segment < SEGMENTS ? segment : -1;
+        int segment = (int)Math.floor((mY - mAttrActionBarHeight) / ((mCanvasHeight - mAttrActionBarHeight - mAttrBottomToolbarHeight) / SEGMENTS));
+        return mY > mAttrActionBarHeight && segment < SEGMENTS ? segment : -1;
     }
 
     private Time getTime() {
@@ -420,10 +433,10 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
 
                     if (canvas != null) {
 
-                        if (mCanvasWidth == 0) {
+                        if (mStatus == STATUS.START) { // TODO
                             mCanvasWidth = canvas.getWidth();
                             mCanvasHeight = canvas.getHeight();
-
+                            mCancelBounds = new RectF(0, 0, mCanvasWidth, mAttrActionBarHeight);
                         }
 
                         synchronized (mSurfaceHolder) {
@@ -453,12 +466,16 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
             canvas.drawColor(Color.WHITE, PorterDuff.Mode.CLEAR);
             drawBackground(canvas);
             drawToggles(canvas);
-            if (mY == 0) {
+            if (mStatus == STATUS.START) {
                 drawOnboarding(canvas);
             } else {
-                drawTime(canvas);
-                if (mStatus == STATUS.MOVE) {
-                    canvas.drawCircle(mX, mY, mCursorRadius, mTextPaint);
+                if (mStatus == STATUS.CANCEL) {
+                    drawCancel(canvas);
+                } else {
+                    drawTime(canvas);
+                    if (mStatus == STATUS.MOVE) {
+                        canvas.drawCircle(mX, mY, mCursorRadius, mTextPaint);
+                    }
                 }
             }
         }
@@ -521,6 +538,16 @@ public class SwipeTimeSurfaceView extends SurfaceView implements Runnable, Surfa
             Rect onboardingBounds = new Rect();
             mOnboardingPaint.getTextBounds(onboardingText, 0, onboardingText.length(), onboardingBounds);
             canvas.drawText(onboardingText, mCanvasWidth / 2, (mAttrActionBarHeight + onboardingBounds.height()) / 2, mOnboardingPaint);
+        }
+
+        private void drawCancel(Canvas canvas) {
+            canvas.drawRect(mCancelBounds, mCancelPaint);
+
+            String cancelText = getResources().getString(R.string.cancel);
+            Rect textBounds = new Rect();
+            mCancelPaintText.getTextBounds(cancelText, 0, cancelText.length(), textBounds);
+            canvas.drawText(cancelText, mCanvasWidth / 2, (mAttrActionBarHeight + textBounds.height()) / 2, mCancelPaintText);
+
         }
 
     }

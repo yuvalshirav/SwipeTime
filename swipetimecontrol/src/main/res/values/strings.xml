@@ -3,4 +3,5 @@
     <string name="daytime">06:00 - 18:00</string>
     <string name="nighttime">18:00 - 06:00</string>
     <string name="onboarding">Swipe to select time</string>
+    <string name="cancel">Cancel</string>
 </resources>
