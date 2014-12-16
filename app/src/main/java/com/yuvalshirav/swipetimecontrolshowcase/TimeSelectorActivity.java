@@ -20,7 +20,6 @@ import com.yuvalshirav.swipetimecontrol.SwipeTimeSurfaceView;
 public class TimeSelectorActivity extends ActionBarActivity implements SwipeTimeSurfaceView.OnTimeChanged {
 
     public final static String RESULT_TIME = "result_time";
-    public final static String RESULT_STATUS = "result_status";
 
     private TextView mTitleView;
     private TextView mCancelView;
