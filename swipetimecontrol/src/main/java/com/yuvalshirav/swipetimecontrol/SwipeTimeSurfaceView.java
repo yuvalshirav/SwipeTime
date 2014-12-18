@@ -59,6 +59,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements SurfaceHolder.C
     private RectF mNighttimeBounds = new RectF();
     private DrawThread mDrawThread;
     private Time mLastTime = new Time();
+    private boolean mRunning = false;
 
     private final static int SEGMENTS = 12;
 
@@ -91,6 +92,10 @@ public class SwipeTimeSurfaceView extends SurfaceView implements SurfaceHolder.C
     }
     private DAY_PART mDayPart = DAY_PART.DAYTIME;
 
+    public SwipeTimeSurfaceView(Context context, AttributeSet attrs, int defStyle) {
+        this(context, attrs); // TODO: handle defStyle
+    }
+
     public SwipeTimeSurfaceView(Context context, AttributeSet attrs) {
         super(context);
 
@@ -99,7 +104,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements SurfaceHolder.C
         mSurfaceHolder = getHolder();
         mSurfaceHolder.addCallback(this);
 
-        setZOrderOnTop(true);
+        show();
         mSurfaceHolder.setFormat(PixelFormat.TRANSPARENT);
         setBackgroundColor(mAttrBackgroundColor);
 
@@ -208,16 +213,15 @@ public class SwipeTimeSurfaceView extends SurfaceView implements SurfaceHolder.C
 
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
+    public boolean onTouchEvent(MotionEvent event, float x, float y) {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 break;
             case MotionEvent.ACTION_MOVE:
-                setPoint(event.getX(), event.getY());
+                setPoint(x, y);
                 break;
             case MotionEvent.ACTION_UP:
-                if (mStatus == STATUS.MOVE || mStatus == STATUS.CANCEL) {
+                if ((mStatus == STATUS.MOVE && getTime() != null && mY > 0) || mStatus == STATUS.CANCEL) {
                     mStatus = STATUS.DONE;
                     if (mOnTimeChanged != null) {
                         mOnTimeChanged.onTimeChanged(getTime(), mStatus, mDayPart);
@@ -226,6 +230,11 @@ public class SwipeTimeSurfaceView extends SurfaceView implements SurfaceHolder.C
                 break;
         }
         return true;
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        return onTouchEvent(event, event.getX(), getY());
     }
 
 
@@ -256,12 +265,18 @@ public class SwipeTimeSurfaceView extends SurfaceView implements SurfaceHolder.C
         return time;
     }
 
-    public void onResume() {
-        // draw thread handled in SurfaceHolder callbacks
+    public void hide() {
+        setZOrderOnTop(false);
+        setVisibility(GONE);
     }
 
-    public void onPause() {
-        // draw thread handled in SurfaceHolder callbacks
+    public void show() {
+        setZOrderOnTop(true);
+        setVisibility(VISIBLE);
+    }
+
+    public boolean isRunning() {
+        return mRunning;
     }
 
     @Override
@@ -301,7 +316,7 @@ public class SwipeTimeSurfaceView extends SurfaceView implements SurfaceHolder.C
 
     class DrawThread extends Thread {
 
-        private boolean mRunning = false;
+
         private int mCanvasWidth;
         private int mCanvasHeight;
 

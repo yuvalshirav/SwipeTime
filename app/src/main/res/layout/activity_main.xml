@@ -18,64 +18,115 @@
         app:contentInsetStart="0dp"
         >
 
-        <EditText
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="10dp"
-            android:layout_marginRight="10dp"
-            android:hint="Remind me to..."
-            android:background="@android:color/transparent"
-            />
+            android:layout_height="match_parent">
+            <EditText
+                android:id="@+id/editbox"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:hint="Remind me to..."
+                android:gravity="center_vertical"
+                android:background="@android:color/transparent"
+                android:lines="1"
+                />
+
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:text="@string/onboarding"
+                android:textColor="@color/time"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:visibility="gone"
+                />
+            <TextView
+                android:id="@+id/cancel"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:text="@string/cancel"
+                android:textColor="#ffffff"
+                android:background="#ff0000"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:visibility="gone"
+                />
+
+
+        </FrameLayout>
 
         </android.support.v7.widget.Toolbar>
 
-    <LinearLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center"
-        android:orientation="horizontal"
-        android:layout_marginTop="20dp"
-        >
+        android:layout_height="match_parent">
         <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            >
-        <TextView
-            android:layout_width="120dp"
+            android:id="@+id/main_interface"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:layout_marginTop="20dp"
+                >
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    >
+                <TextView
+                    android:layout_width="120dp"
+                    android:layout_height="match_parent"
+                    android:text="Please tap to set an alarm"
+                    android:gravity="center"
+                    android:layout_gravity="center"
+                    android:padding="10dp"
+                    android:drawableRight="@drawable/ic_action_arrow_right"
+                    />
+                </FrameLayout>
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    >
+                <Button
+                    android:id="@+id/set_alarm"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:background="#D6D7D7"
+                    style="?android:attr/borderlessButtonStyle"
+                    android:elevation="2dp"
+                    android:text="@string/set_alarm"
+                    android:textAllCaps="false"
+                    android:drawableBottom="@drawable/ic_action_add_alarm"
+                    android:layout_gravity="center"
+                    />
+                </FrameLayout>
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    />
+            </LinearLayout>
+        </FrameLayout>
+        <FrameLayout
+            android:id="@+id/time_selector_wrapper"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:text="Please tap to set an alarm"
-            android:gravity="center"
-            android:layout_gravity="center"
-            android:padding="10dp"
-            android:drawableRight="@drawable/ic_action_arrow_right"
-            />
-        </FrameLayout>
-        <FrameLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:visibility="gone"
             >
-        <Button
-            android:id="@+id/set_alarm"
-            android:layout_width="100dp"
-            android:layout_height="100dp"
-            android:background="#D6D7D7"
-            style="?android:attr/borderlessButtonStyle"
-            android:elevation="2dp"
-            android:text="@string/set_alarm"
-            android:textAllCaps="false"
-            android:drawableBottom="@drawable/ic_action_add_alarm"
-            android:layout_gravity="center"
-            />
-        </FrameLayout>
-        <Space
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            />
-    </LinearLayout>
 
+        </FrameLayout>
+    </FrameLayout>
 
 
 </LinearLayout>
